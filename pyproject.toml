@@ -1,0 +1,49 @@
+[project]
+name = "assured-py"
+dynamic = ["version"]
+description = "Unofficial Python SDK for the Assured Platform API"
+authors = [
+  { name = "Jordan Haisley", email = "jordanhaisley@gmail.com" }
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28",
+    "pydantic>=2.11",
+    "pydantic-settings>=2.9",
+    "python-dotenv>=1.1",
+    "pandas>=2.2",
+    "cryptography>=42.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.26",
+    "respx>=0.22",
+    "ruff>=0.11",
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.0.0.dev0"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/assured"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
