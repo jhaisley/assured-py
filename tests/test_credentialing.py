@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from tests.conftest import paginated_response
 
 from assured.models.credentialing import CredentialingRequestCreate
+from tests.conftest import paginated_response
 
 _LIST_URL = "https://test-api.example.com/api/v1/credentialing/request-list/"
 _CREATE_URL = "https://test-api.example.com/api/v1/credentialing/create-credentialing-request/"

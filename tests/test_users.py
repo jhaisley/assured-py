@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from tests.conftest import paginated_response
 
 from assured.exceptions import AssuredAuthError, AssuredValidationError
 from assured.models.users import UserListParams
+from tests.conftest import paginated_response
 
 _USERS_URL = "https://test-api.example.com/api/v1/users/users-list/"
 

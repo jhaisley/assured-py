@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from tests.conftest import paginated_response
 
 from assured.models.tasks import TaskCreate
+from tests.conftest import paginated_response
 
 _EXPIRABLES_URL = "https://test-api.example.com/api/v1/task-management/expirables/"
 _TASKS_URL = "https://test-api.example.com/api/v1/task-management/tasks/"

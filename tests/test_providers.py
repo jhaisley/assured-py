@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from tests.conftest import paginated_response
 
 from assured.models.providers import ProviderCreate, ProviderInvite
+from tests.conftest import paginated_response
 
 _PROVIDERS_URL = "https://test-api.example.com/api/v1/users/providers-list/"
 _INVITE_URL = "https://test-api.example.com/api/v1/users/invite-providers/"
