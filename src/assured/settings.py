@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+
 from dotenv import find_dotenv, load_dotenv
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-import logging
 
 logger = logging.getLogger("assured")
 

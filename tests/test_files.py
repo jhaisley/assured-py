@@ -1,10 +1,9 @@
 """Tests for the Files undocumented endpoints."""
 
+
+import httpx
 import pytest
 import respx
-import httpx
-
-from urllib.parse import urlparse
 
 from assured.client import AssuredClient
 from assured.settings import Settings
