@@ -2,6 +2,11 @@
 
 An unofficial, modern, async-first Python SDK wrapping the **Assured Platform API**. This library provides fully typed Pydantic models, automatic semantic pagination, and robust file handling designed to streamline interactions with Assured's complex backend.
 
+[![CI](https://github.com/jhaisley/assured-py/actions/workflows/ci.yml/badge.svg)](https://github.com/jhaisley/assured-py/actions/workflows/ci.yml)
+[![CodeQL Advanced](https://github.com/jhaisley/assured-py/actions/workflows/codeql.yml/badge.svg)](https://github.com/jhaisley/assured-py/actions/workflows/codeql.yml)
+[![PyPI](https://img.shields.io/pypi/v/assured-py.svg)](https://pypi.org/project/assured-py/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
 ## Features
 
 - **Async First**: Built on `httpx` to support highly concurrent workflows seamlessly.
@@ -24,7 +29,7 @@ ASSURED_USER=your-email@example.com
 ASSURED_PASS=your-password
 ```
 
-> [!NOTE] 
+> [!NOTE]
 > The API Key handles 95% of requests. However, certain undocumented endpoints like file uploading and SSN encryption require explicit user credentials (`ASSURED_USER` and `ASSURED_PASS`) to acquire an internal JWT session token. The client handles fetching and caching this JWT automatically.
 
 ## Quickstart
@@ -68,6 +73,7 @@ if __name__ == "__main__":
 ## Structure & Architecture
 
 The domains mirror Assured's core logical groupings:
+
 - `client.users`: Managing internal roles.
 - `client.providers`: Listing, fetching context, and inviting user providers.
 - `client.provider_profile`: Encompasses deep profiles ranging from demographics to DEAs to Gap Histories.

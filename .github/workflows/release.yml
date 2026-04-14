@@ -3,18 +3,9 @@ name: Release to PyPI
 on:
   workflow_dispatch:
     inputs:
-      bump:
-        description: Version bump type
-        required: true
-        default: patch
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
       version:
-        description: Optional explicit version (overrides bump, e.g. 1.2.3)
-        required: false
+        description: Exact version to release (e.g. 1.2.3)
+        required: true
         type: string
       prerelease:
         description: Mark GitHub release as prerelease
@@ -53,37 +44,17 @@ jobs:
       - name: Install tooling
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[test]"
-          pip install hatch ruff uv
+          pip install -e ".[dev]"
+          pip install hatch
 
-      - name: Bump/set version with uv
+      - name: Prep Version Info
         id: ver
-        env:
-          INPUT_VERSION: ${{ inputs.version }}
-          INPUT_BUMP: ${{ inputs.bump }}
         run: |
-          if [ -n "${INPUT_VERSION}" ]; then
-            uv version "${INPUT_VERSION}"
-          else
-            uv version --bump "${INPUT_BUMP}"
-          fi
-
-          NEW_VERSION="$(uv version --short)"
+          NEW_VERSION="${{ inputs.version }}"
+          # Strip 'v' if accidentally included by user
+          NEW_VERSION="${NEW_VERSION#v}"
           echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
-
-      - name: Commit version bump
-        run: |
-          if git diff --quiet -- pyproject.toml; then
-            echo "No version change detected"
-            exit 1
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add pyproject.toml
-          git commit -m "chore(release): bump version to ${{ steps.ver.outputs.version }}"
-          git push origin HEAD:main
-
       - name: Lint
         run: |
           ruff check .
