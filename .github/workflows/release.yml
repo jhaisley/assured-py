@@ -55,6 +55,20 @@ jobs:
           NEW_VERSION="${NEW_VERSION#v}"
           echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
           echo "tag=v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure tag does not exist
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/${{ steps.ver.outputs.tag }}$"; then
+            echo "Tag ${{ steps.ver.outputs.tag }} already exists"
+            exit 1
+          fi
+
+      - name: Create tag locally (for hatch-vcs)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.ver.outputs.tag }}" -m "Release ${{ steps.ver.outputs.tag }}"
+
       - name: Lint
         run: |
           ruff check .
@@ -66,19 +80,16 @@ jobs:
       - name: Build
         run: hatch build
 
-      - name: Ensure tag does not exist
+      - name: Verify built version
         run: |
-          if git ls-remote --tags origin | grep -q "refs/tags/${{ steps.ver.outputs.tag }}$"; then
-            echo "Tag ${{ steps.ver.outputs.tag }} already exists"
+          ls dist/
+          if ! ls dist/ | grep -q "${{ steps.ver.outputs.version }}"; then
+            echo "ERROR: Built artifacts do not contain expected version ${{ steps.ver.outputs.version }}"
             exit 1
           fi
 
-      - name: Create and push tag
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ steps.ver.outputs.tag }}" -m "Release ${{ steps.ver.outputs.tag }}"
-          git push origin "${{ steps.ver.outputs.tag }}"
+      - name: Push tag
+        run: git push origin "${{ steps.ver.outputs.tag }}"
 
       - name: Create GitHub release
         env:
