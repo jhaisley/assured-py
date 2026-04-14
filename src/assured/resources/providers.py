@@ -90,7 +90,7 @@ class ProvidersResource:
 
     async def get_by_npi(self, npi: str) -> Provider:
         """Fetch a single provider by their NPI.
-        
+
         Since there is no native endpoint for NPI lookup, this pulls the
         full provider list and caches it for 5 minutes to optimize
         subsequent identical calls.

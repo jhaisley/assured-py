@@ -42,7 +42,9 @@ class PayerEnrollmentResource:
     async def create_provider_enrollment(self, data: ProviderEnrollmentRequestCreate) -> dict[str, Any]:
         return await self._client._post(_PROVIDER_ENROLL_PATH, json=data.model_dump(exclude_none=False))
 
-    async def add_existing_provider_enrollment(self, data: ExistingProviderEnrollmentCreate) -> ExistingProviderEnrollment:
+    async def add_existing_provider_enrollment(
+        self, data: ExistingProviderEnrollmentCreate
+    ) -> ExistingProviderEnrollment:
         path = "/api/v1/payer-enrollment/add-existing-provider-enrollment/"
         resp = await self._client._post(path, json=data.model_dump(exclude_none=False))
         return ExistingProviderEnrollment.model_validate(resp)

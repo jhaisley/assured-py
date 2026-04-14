@@ -71,10 +71,10 @@ class UsersResource:
 
     async def password_reset(self, email: str) -> dict[str, Any]:
         """Trigger a password reset email for a given user or provider.
-        
+
         Args:
             email: The email address to send the password reset link to.
-            
+
         Returns:
             The raw JSON response from the server (typically empty on 200 OK).
         """

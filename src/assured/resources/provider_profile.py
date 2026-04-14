@@ -400,12 +400,13 @@ class ProviderProfileResource:
         mime_type: str | None = None,
     ) -> ProviderDocument:
         """High-level orchestration: uploads a file to S3 and associates it to a provider.
-        
+
         This manages both steps of the hidden endpoints automatically:
         1. Submits file to `/api/v1/files/handle/` to acquire S3 storage URI.
         2. Submits association to `/api/v1/users/provider-documents/`.
         """
         import os
+
         ext = os.path.splitext(filename)[1].lower()
         if ext not in {".pdf", ".png", ".jpg", ".jpeg"}:
             raise ValueError(f"Unsupported file format: '{ext}'. Assured only accepts PDF, PNG, and JPEG files.")

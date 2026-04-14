@@ -16,6 +16,7 @@ if env_path:
     load_dotenv(env_path)
     print(f"Loaded environment variables from: {env_path}")
     import os
+
     if os.getenv("ASSURED_USER") and os.getenv("ASSURED_PASS"):
         print(f"✅ Successfully found credentials for {os.getenv('ASSURED_USER')}")
     else:
