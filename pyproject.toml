@@ -7,7 +7,7 @@ authors = [
 ]
 license = { text = "MIT" }
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28",
     "pydantic>=2.11",
@@ -41,7 +41,7 @@ fallback-version = "0.0.0.dev0"
 packages = ["src/assured"]
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py312"
 line-length = 120
 src = ["src", "tests"]
 

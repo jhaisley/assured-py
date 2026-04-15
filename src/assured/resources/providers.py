@@ -118,17 +118,17 @@ class ProvidersResource:
 
     async def invite(self, providers: list[ProviderInvite]) -> list[dict[str, Any]]:
         """Invite one or more providers to the platform."""
-        payload = [p.model_dump(exclude_none=False) for p in providers]
+        payload = [p.model_dump(mode="json", exclude_none=False) for p in providers]
         return await self._client._post(_INVITE_PATH, json=payload)
 
     # ---- CAQH Import ----
 
     async def import_with_caqh(self, data: ProviderCAQHImport) -> dict[str, Any]:
         """Import a single provider using CAQH credentials."""
-        return await self._client._post(_CAQH_PATH, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_CAQH_PATH, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Create ----
 
     async def create(self, data: ProviderCreate) -> dict[str, Any]:
         """Create a new provider (without CAQH)."""
-        return await self._client._post(_CREATE_PATH, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_CREATE_PATH, json=data.model_dump(mode="json", exclude_none=False))

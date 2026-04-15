@@ -172,7 +172,7 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_certification(self, data: CertificationCreate) -> dict[str, Any]:
-        return await self._client._post(_CERTS, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_CERTS, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Licenses ----
 
@@ -195,7 +195,7 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_license(self, data: LicenseCreate) -> dict[str, Any]:
-        return await self._client._post(_LICENSE, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_LICENSE, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- DEA ----
 
@@ -218,7 +218,7 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_dea(self, data: DEARecordCreate) -> dict[str, Any]:
-        return await self._client._post(_DEA, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_DEA, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- CDS ----
 
@@ -241,7 +241,7 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_cds(self, data: CDSRecordCreate) -> dict[str, Any]:
-        return await self._client._post(_CDS, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_CDS, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Medicaid ----
 
@@ -264,7 +264,7 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_medicaid(self, data: MedicaidRecordCreate) -> dict[str, Any]:
-        return await self._client._post(_MEDICAID, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_MEDICAID, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Medicare ----
 
@@ -287,7 +287,7 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_medicare(self, data: MedicareRecordCreate) -> dict[str, Any]:
-        return await self._client._post(_MEDICARE, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_MEDICARE, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Employment ----
 
@@ -310,7 +310,7 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_employment(self, data: EmploymentCreate) -> dict[str, Any]:
-        return await self._client._post(_EMPLOYMENT, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_EMPLOYMENT, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Gap History ----
 
@@ -333,7 +333,7 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_gap_history(self, data: GapHistoryCreate) -> dict[str, Any]:
-        return await self._client._post(_GAP, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_GAP, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Education ----
 
@@ -356,7 +356,7 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_education(self, data: EducationCreate) -> dict[str, Any]:
-        return await self._client._post(_EDUCATION, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_EDUCATION, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Professional Training ----
 
@@ -379,12 +379,12 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_training(self, data: ProfessionalTrainingCreate) -> dict[str, Any]:
-        return await self._client._post(_TRAINING, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_TRAINING, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Documents ----
 
     async def create_document(self, data: ProviderDocumentCreate) -> ProviderDocument:
-        payload = data.model_dump(exclude_none=False)
+        payload = data.model_dump(mode="json", exclude_none=False)
         payload["id"] = ""
         payload["presigned_document_url"] = ""
         resp = await self._client._post(_DOCUMENTS, json=payload, requires_jwt=True)
@@ -457,4 +457,4 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_insurance(self, data: ProfessionalLiabilityInsuranceCreate) -> dict[str, Any]:
-        return await self._client._post(_INSURANCE, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_INSURANCE, json=data.model_dump(mode="json", exclude_none=False))

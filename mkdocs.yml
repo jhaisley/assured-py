@@ -72,6 +72,7 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Guides:
+      - Smart Helpers: guides/smart-helpers.md
       - Authentication: guides/authentication.md
       - File Uploads: guides/file-uploads.md
       - Pagination & DataFrames: guides/pagination.md

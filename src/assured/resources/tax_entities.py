@@ -45,4 +45,4 @@ class TaxEntitiesResource:
         return TaxEntity.model_validate(data)
 
     async def create(self, data: TaxEntityCreate) -> dict[str, Any]:
-        return await self._client._post(_LIST_PATH, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_LIST_PATH, json=data.model_dump(mode="json", exclude_none=False))

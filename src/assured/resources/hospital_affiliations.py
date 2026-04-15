@@ -64,7 +64,7 @@ class HospitalAffiliationsResource:
         return AdmittingArrangement.model_validate(data)
 
     async def create_arrangement(self, data: AdmittingArrangementCreate) -> dict[str, Any]:
-        return await self._client._post(_ARRANGEMENTS_PATH, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_ARRANGEMENTS_PATH, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Admitting Privileges ----
 
@@ -97,7 +97,7 @@ class HospitalAffiliationsResource:
         return AdmittingPrivilege.model_validate(data)
 
     async def create_privilege(self, data: AdmittingPrivilegeCreate) -> dict[str, Any]:
-        return await self._client._post(_PRIVILEGES_PATH, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_PRIVILEGES_PATH, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Non-Admitting Affiliations ----
 
@@ -130,4 +130,4 @@ class HospitalAffiliationsResource:
         return NonAdmittingAffiliation.model_validate(data)
 
     async def create_non_admitting(self, data: NonAdmittingAffiliationCreate) -> dict[str, Any]:
-        return await self._client._post(_NON_ADMITTING_PATH, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_NON_ADMITTING_PATH, json=data.model_dump(mode="json", exclude_none=False))

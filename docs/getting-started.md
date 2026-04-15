@@ -95,6 +95,21 @@ finally:
     await client.close()
 ```
 
+### Looking Up a Provider by NPI
+
+Since Assured doesn't offer a native NPI search endpoint, the SDK provides `get_by_npi()` which fetches the full provider list and caches it for 5 minutes:
+
+```python
+provider = await client.providers.get_by_npi("1234567890")
+print(f"{provider.full_name} — {provider.email}")
+
+# Subsequent calls within 5 minutes hit the cache — no extra API calls
+another = await client.providers.get_by_npi("0987654321")
+```
+
+!!! tip
+    The cache is per-client instance. If you need fresh data, create a new `AssuredClient`.
+
 ## What's Next?
 
 - **[Authentication Guide](guides/authentication.md)** — Understand the dual auth model

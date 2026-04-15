@@ -56,7 +56,7 @@ class TasksResource:
 
     async def create_task(self, data: TaskCreate) -> dict[str, Any]:
         """Create a new task."""
-        return await self._client._post(_TASKS_PATH, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_TASKS_PATH, json=data.model_dump(mode="json", exclude_none=False))
 
     async def list_tasks(self, params: TaskListParams | None = None, **kwargs: Any) -> list[Task]:
         raw_params = params.model_dump(exclude_none=False) if params else {}

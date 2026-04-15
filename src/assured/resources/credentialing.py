@@ -29,7 +29,7 @@ class CredentialingResource:
 
     async def create_request(self, data: CredentialingRequestCreate) -> dict[str, Any]:
         """Create a new credentialing request."""
-        return await self._client._post(_CREATE_PATH, json=data.model_dump(exclude_none=False))
+        return await self._client._post(_CREATE_PATH, json=data.model_dump(mode="json", exclude_none=False))
 
     async def get_request(self, request_id: str) -> CredentialingRequestDetail:
         """Get the detail/status of a credentialing request."""
