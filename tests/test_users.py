@@ -9,7 +9,7 @@ from assured.exceptions import AssuredAuthError, AssuredValidationError
 from assured.models.users import UserListParams
 from tests.conftest import paginated_response
 
-_USERS_URL = "https://test-api.example.com/api/v1/users/users-list/"
+_USERS_URL = "https://test-api.example.com/api/v1/users/external-users-list/"
 
 
 @pytest.mark.asyncio
@@ -88,7 +88,7 @@ async def test_list_users_pagination(client, mock_api):
                 json=paginated_response(
                     [{"id": "1", "email": "a@b.com"}],
                     count=2,
-                    next_url="https://test-api.example.com/api/v1/users/users-list/?offset=1&limit=1",
+                    next_url="https://test-api.example.com/api/v1/users/external-users-list/?offset=1&limit=1",
                 ),
             ),
             httpx.Response(

@@ -11,6 +11,8 @@ An unofficial, modern, async-first Python SDK wrapping the **Assured Platform AP
 
 [![forthebadge made-with-python](http://ForTheBadge.com/images/badges/made-with-python.svg)](https://www.python.org/) ![uv](https://img.shields.io/badge/uv-%23DE5FE9.svg?style=for-the-badge&logo=uv&logoColor=white)
 
+[![Open Demo In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/jnhaisley/assured-py/assured_py_demo.ipynb)
+
 ## Features
 
 - **Async First**: Built on `httpx` to support highly concurrent workflows seamlessly.
