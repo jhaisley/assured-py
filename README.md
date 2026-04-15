@@ -4,8 +4,11 @@ An unofficial, modern, async-first Python SDK wrapping the **Assured Platform AP
 
 [![CI](https://github.com/jhaisley/assured-py/actions/workflows/ci.yml/badge.svg)](https://github.com/jhaisley/assured-py/actions/workflows/ci.yml)
 [![CodeQL Advanced](https://github.com/jhaisley/assured-py/actions/workflows/codeql.yml/badge.svg)](https://github.com/jhaisley/assured-py/actions/workflows/codeql.yml)
-[![PyPI](https://img.shields.io/pypi/v/assured-py.svg)](https://pypi.org/project/assured-py/)
+[![PyPI version fury.io](https://badge.fury.io/py/assured-py.svg)](https://pypi.python.org/pypi/assured-py/)
+[![Docs](https://readthedocs.org/projects/assured-py/badge/?version=latest)](https://assured-py.readthedocs.io)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+
+[![forthebadge made-with-python](http://ForTheBadge.com/images/badges/made-with-python.svg)](https://www.python.org/) ![uv](https://img.shields.io/badge/uv-%23DE5FE9.svg?style=for-the-badge&logo=uv&logoColor=white)
 
 ## Features
 

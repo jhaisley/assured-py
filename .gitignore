@@ -2,6 +2,9 @@
 # Python .gitignore (reusable template)
 # =============================================
 
+# MkDocs build output
+site/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
