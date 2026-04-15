@@ -87,3 +87,14 @@ Mixing them causes `404` or `422` errors. The SDK provides `client.providers.get
 2. POST to `/api/v1/users/provider-documents/` mapping the URI to a provider (also JWT-protected)
 
 The SDK's `upload_and_associate_document()` abstracts this into a single call.
+
+## 9. Users List Endpoint
+
+**Spec:** Documented as `GET /api/v1/users/users-list/`.
+
+**Reality:** The documented endpoint is dead (returns errors). The platform has silently migrated to an external-facing variant.
+
+- **Working endpoint:** `GET /api/v1/users/external-users-list/`
+- **Response:** Same paginated structure (`count`, `next`, `previous`, `results`), same core fields.
+- **New fields added:** `invited_at`, `source_of_joining`, `client` (UUID), `client_name` — not present in the original spec.
+- **SDK Solution:** The SDK points to the working endpoint and includes the additional fields on the `User` model.

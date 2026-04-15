@@ -85,3 +85,13 @@ This document outlines the known discrepancies between the official OpenAPI spec
   1. The user must first process the raw file via the JWT-restricted route `/api/v1/files/handle/` to extract the `s3://` URI.
   2. The user then posts a specialized schema mapping the `document_url` to a `provider` id at `/api/v1/users/provider-documents/` (which *also* expects JWT constraints).
 - **SDK Solution:** Built an abstraction `.upload_and_associate_document()` to bridge this workflow securely underneath a single execution wrapper while preserving accurate typing semantics!
+
+## 9. Users List Endpoint
+
+**Spec:** Documented as `GET /api/v1/users/users-list/`.
+**Reality:** The documented endpoint is dead (returns errors). The platform has silently migrated to an external-facing variant.
+
+- **Working Endpoint:** `GET /api/v1/users/external-users-list/`
+- **Response:** Same paginated structure (`count`, `next`, `previous`, `results`), same core user fields.
+- **New Fields:** `invited_at`, `source_of_joining`, `client` (UUID), `client_name` — not present in the original spec.
+- **SDK Solution:** The SDK points to the working endpoint and includes the additional fields on the `User` model automatically.

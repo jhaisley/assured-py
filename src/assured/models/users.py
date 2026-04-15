@@ -19,8 +19,12 @@ class User(BaseModel):
     user_type: str | None = None
     date_joined: datetime | None = None
     email_verified_at: datetime | None = None
+    invited_at: datetime | None = None
     activated_at: datetime | None = None
     deactivated_at: datetime | None = None
+    source_of_joining: str | None = None
+    client: str | None = None
+    client_name: str | None = None
 
 
 class UserListParams(BaseModel):

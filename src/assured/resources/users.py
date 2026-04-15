@@ -11,7 +11,7 @@ from assured.models.users import User, UserListParams
 if TYPE_CHECKING:
     from assured.client import AssuredClient
 
-_PATH = "/api/v1/users/users-list/"
+_PATH = "/api/v1/users/external-users-list/"
 
 
 class UsersResource:
