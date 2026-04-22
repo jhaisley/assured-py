@@ -19,6 +19,8 @@ class Provider(BaseModel):
     full_name: str | None = None
     provider_profile_id: str | None = None
     profile_completeness_percentage: float | None = None
+    is_active: bool | None = None
+    user_type: str | None = None
 
 
 class ProviderListParams(BaseModel):
@@ -69,3 +71,10 @@ class ProviderCreate(BaseModel):
     document_type: str
     provider_practice_locations: list[str] | None = None
     org_joining_date: date | None = None
+
+
+class PracticeLocationProvidersCreate(BaseModel):
+    """Payload for associating providers with a practice location."""
+
+    providers: list[str]
+    practice_location: str

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 from assured.models.providers import (
+    PracticeLocationProvidersCreate,
     Provider,
     ProviderCAQHImport,
     ProviderCreate,
@@ -21,6 +22,8 @@ _LIST_PATH = "/api/v1/users/providers-list/"
 _INVITE_PATH = "/api/v1/users/invite-providers/"
 _CAQH_PATH = "/api/v1/users/import-single-provider-with-caqh/"
 _CREATE_PATH = "/api/v1/users/create-providers/"
+_NOT_IN_PRACTICE_LOC_PATH = "/api/v1/users/providers-not-in-practice-loc/"
+_PRACTICE_LOC_PROVIDERS_PATH = "/api/v1/users/practice-location-providers/"
 
 
 class ProvidersResource:
@@ -132,3 +135,41 @@ class ProvidersResource:
     async def create(self, data: ProviderCreate) -> dict[str, Any]:
         """Create a new provider (without CAQH)."""
         return await self._client._post(_CREATE_PATH, json=data.model_dump(mode="json", exclude_none=False))
+
+    # ---- Practice Locations ----
+
+    async def list_not_in_practice_location(
+        self, practice_location: str, params: ProviderListParams | None = None, **kwargs: Any
+    ) -> list[Provider]:
+        """List providers not associated with a specific practice location."""
+        raw_params = params.model_dump(exclude_none=False) if params else {}
+        raw_params.update(kwargs)
+        raw_params["practice_location"] = practice_location
+        data = await self._client._get_page(_NOT_IN_PRACTICE_LOC_PATH, params=raw_params)
+        return [Provider.model_validate(item) for item in data.get("results", [])]
+
+    async def list_all_not_in_practice_location(
+        self, practice_location: str, params: ProviderListParams | None = None, **kwargs: Any
+    ) -> list[Provider]:
+        """List all providers not associated with a specific practice location."""
+        raw_params = params.model_dump(exclude_none=False) if params else {}
+        raw_params.update(kwargs)
+        raw_params["practice_location"] = practice_location
+        records = await self._client._get_all_pages(_NOT_IN_PRACTICE_LOC_PATH, params=raw_params)
+        return [Provider.model_validate(item) for item in records]
+
+    async def list_not_in_practice_location_df(
+        self, practice_location: str, params: ProviderListParams | None = None, **kwargs: Any
+    ) -> pd.DataFrame:
+        """List all providers not associated with a specific practice location as a DataFrame."""
+        raw_params = params.model_dump(exclude_none=False) if params else {}
+        raw_params.update(kwargs)
+        raw_params["practice_location"] = practice_location
+        records = await self._client._get_all_pages(_NOT_IN_PRACTICE_LOC_PATH, params=raw_params)
+        return self._client.to_dataframe(records)
+
+    async def add_to_practice_location(self, data: PracticeLocationProvidersCreate) -> dict[str, Any]:
+        """Associate multiple providers with a practice location."""
+        return await self._client._post(
+            _PRACTICE_LOC_PROVIDERS_PATH, json=data.model_dump(mode="json", exclude_none=False)
+        )

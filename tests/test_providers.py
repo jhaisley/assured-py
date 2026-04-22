@@ -5,12 +5,14 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from assured.models.providers import ProviderCreate, ProviderInvite
+from assured.models.providers import PracticeLocationProvidersCreate, ProviderCreate, ProviderInvite
 from tests.conftest import paginated_response
 
 _PROVIDERS_URL = "https://test-api.example.com/api/v1/users/providers-list/"
 _INVITE_URL = "https://test-api.example.com/api/v1/users/invite-providers/"
 _CREATE_URL = "https://test-api.example.com/api/v1/users/create-providers/"
+_NOT_IN_PRACTICE_LOC_URL = "https://test-api.example.com/api/v1/users/providers-not-in-practice-loc/"
+_PRACTICE_LOC_PROVIDERS_URL = "https://test-api.example.com/api/v1/users/practice-location-providers/"
 
 
 @pytest.mark.asyncio
@@ -170,3 +172,45 @@ async def test_get_profile_id_missing(client, mock_api):
 
     with pytest.raises(AssuredAPIError, match="Provider p-no-prof has no profile ID"):
         await client.providers.get_profile_id("p-no-prof")
+
+
+@pytest.mark.asyncio
+async def test_list_not_in_practice_location(client, mock_api):
+    mock_api.get(f"{_NOT_IN_PRACTICE_LOC_URL}?practice_location=loc-1").mock(
+        return_value=httpx.Response(
+            200,
+            json=paginated_response(
+                [
+                    {
+                        "id": "p-1",
+                        "email": "doc@example.com",
+                        "first_name": "Jane",
+                        "last_name": "Doe",
+                        "is_active": True,
+                        "user_type": "provider",
+                    },
+                ]
+            ),
+        )
+    )
+
+    providers = await client.providers.list_not_in_practice_location(practice_location="loc-1")
+    assert len(providers) == 1
+    assert providers[0].id == "p-1"
+    assert providers[0].is_active is True
+    assert providers[0].user_type == "provider"
+
+
+@pytest.mark.asyncio
+async def test_add_to_practice_location(client, mock_api):
+    mock_api.post(_PRACTICE_LOC_PROVIDERS_URL).mock(
+        return_value=httpx.Response(
+            201,
+            json={"message": "Practice Location Provider associations created successfully"},
+        )
+    )
+
+    result = await client.providers.add_to_practice_location(
+        PracticeLocationProvidersCreate(providers=["p-1", "p-2"], practice_location="loc-1")
+    )
+    assert result["message"] == "Practice Location Provider associations created successfully"
