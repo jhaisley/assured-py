@@ -64,8 +64,8 @@ class ProviderCreate(BaseModel):
     email: str
     first_name: str
     last_name: str
+    client: str
+    document_url: str
+    document_type: str
     provider_practice_locations: list[str] | None = None
-    client: str | None = None
     org_joining_date: date | None = None
-    document_url: str | None = None
-    document_type: str | None = None

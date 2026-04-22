@@ -81,7 +81,16 @@ async def test_create_provider(client, mock_api):
         )
     )
 
-    result = await client.providers.create(ProviderCreate(email="created@example.com", first_name="C", last_name="D"))
+    result = await client.providers.create(
+        ProviderCreate(
+            email="created@example.com",
+            first_name="C",
+            last_name="D",
+            client="client-id",
+            document_url="https://example.com/doc.pdf",
+            document_type="W-9",
+        )
+    )
     assert result["id"] == "created-1"
 
 
