@@ -437,8 +437,10 @@ class EmploymentCreate(BaseModel):
         legacy fields not present in the official v1 request schema; prefer
         ``currently_employed`` and ``reason_for_discontinuance``.
         ``gap_explanation`` appears only in the documented response schema,
-        not the request schema, but production has historically required it
-        on create (see API_Divergence.md), so it is kept on the payload.
+        not the request schema. It is kept on the payload for compatibility,
+        but it is **not** required on create -- a create sending it as null
+        was accepted by production on 2026-08-20 (see API_Divergence.md
+        section 2).
     """
 
     provider: str

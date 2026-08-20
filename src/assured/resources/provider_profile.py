@@ -206,6 +206,19 @@ class ProviderProfileResource:
         random 16-byte IV prefixed to the ciphertext before Base64 encoding.
         This endpoint also requires the JWT for Bearer auth instead of the
         standard API key. The SDK keeps the production behavior.
+
+        Note:
+            Production also exposes a *plaintext* SSN endpoint,
+            ``/api/v1/users/retrieve-update-provider-ssn/{id}/``, which is
+            absent from the bundled spec. It is **read-only** — its documented
+            ``PATCH`` answers ``400 "SSN is not updatable via this endpoint."``
+            — so this encrypted write is still the only way to set an SSN.
+
+            Use the plaintext endpoint to verify a write: ``GET`` it after
+            calling this method and it returns the decrypted value, confirming
+            the server accepted the ciphertext correctly. Reading back through
+            this endpoint only returns ciphertext. See API_Divergence.md
+            sections 5 and 12.
         """
         import base64
         import hashlib

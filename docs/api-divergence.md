@@ -72,6 +72,21 @@ The SDK's `upload_and_associate_document()` abstracts this into a single call.
 - **SDK Solution:** `providers.create()` serializes with `exclude_none=True`, so unset fields are omitted. `client` is assigned server-side from the caller's org when absent.
 - **Same shape elsewhere:** `providers.invite()` and `providers.import_with_caqh()` now also serialize with `exclude_none=True` for the same reason. Neither has been exercised against production (both have outward-facing side effects — `invite` sends email to the provider), but omitting unset keys matches the verified semantics of their sibling `create()` and is what the pre-update payloads (before these optional fields existed) always did.
 - **Related:** Section 1 documents the same optional-vs-nullable confusion on `provider-personal-info`, where it is considerably more damaging.
+- **Not universal:** several sibling POST endpoints — licences, certifications, employment, Medicaid — accept explicit nulls without complaint. Only `create-providers` and `provider-personal-info` reject them, so treat this as endpoint-specific rather than an API-wide rule.
+
+### 12. The bundled spec is a subset of the live schema
+
+**Spec:** `Assured Platform API.json` in this repo describes **70 paths**.
+
+**Reality:** Production serves its own OpenAPI 3.0.3 schema at `https://prod-backend.withassured.com/api/schema/` (~2.4MB, YAML, no authentication required) describing **728 paths**.
+
+The bundled file is a hand-curated excerpt, not the whole API. An endpoint's absence from it means nothing — check the live schema before concluding something does not exist. Section 5's two extra SSN endpoints were found this way; neither appears in the bundled copy.
+
+```bash
+curl -s https://prod-backend.withassured.com/api/schema/ -o live-schema.yaml
+```
+
+- **Caveat:** the live schema is generated from the server's serializers, so it reflects wiring rather than behaviour. It documents `PATCH` on the plaintext SSN endpoint, which production rejects outright (section 5). Treat it as the authoritative list of *what exists*, and this document as the record of *what actually works*.
 
 ## Formerly undocumented — now in the official spec
 
@@ -95,6 +110,8 @@ The SDK still strips the spec's response-only fields from the merged payload —
 
 **Standing notes:** The documented schema matches what the SDK reverse-engineered (`currently_employed`, `reason_for_discontinuance`, address/contact fields, `gap_explanation`, `document`). The SDK's `Employment` and `EmploymentCreate` models retain the older schema's fields (`position`, `type`, `is_current`, `reason_for_leaving`) as legacy extras for backward compatibility; they are absent from the official schema.
 
+**Correction (2026-08-20):** `gap_explanation` is **not** required on create. `EmploymentCreate`'s docstring claimed production "has historically required it", but a create sending `gap_explanation: null` — along with nulls for every other unset optional — was accepted. Unlike sections 1 and 11, this endpoint tolerates explicit nulls.
+
 ### 3. Provider Education Endpoints
 
 **Spec (updated):** The education schema has caught up with reality: `name`, `city`, `state`, `country`, `is_primary`, `address_street_1`, `address_street_2`, `postal_code`, and `document` are all now documented on `/api/v1/users/provider-education/`.
@@ -109,6 +126,18 @@ The SDK still strips the spec's response-only fields from the merged payload —
 
 - **Auth:** Production rejects API keys on this endpoint — requires `Authorization: Bearer {jwt}`.
 - **Encryption:** The `ssn` value must be a Base64-encoded AES-256-CTR ciphertext with a SHA-256 hash of the JWT as the symmetric key. A random 16-byte IV is prepended before Base64 encoding. The `GET` likewise returns ciphertext, not plaintext.
+
+**There are three SSN endpoints, not one** (see section 12 — the bundled spec omits two of them). All three take a JWT:
+
+| Endpoint | Payload | Read | Write |
+|---|---|---|---|
+| `retrieve-update-provider-ssn/{id}/` | plaintext (`PatchedProviderSSN`) | ✅ returns plaintext | ❌ `400 "SSN is not updatable via this endpoint."` |
+| `retrieve-update-provider-ssn-sym-encrypted/{id}/` | AES-256-CTR ciphertext | returns ciphertext | ✅ the only working write |
+| `retrieve-update-provider-ssn-asym-encrypted/{id}/` | RSA (`PatchedProviderSSNRSAEncrypted`, read-only `public_key`) | — | untested |
+
+The plaintext endpoint advertises `PATCH` in the schema but refuses it in production, so **the AES encryption above is still mandatory for writes** — it has not been superseded. What the plaintext endpoint is good for is *verification*: write through the AES endpoint, then `GET` the plaintext one. If the server decrypted correctly it hands back the true value. Reading back through the encrypted endpoint only yields ciphertext and proves nothing.
+
+Verified end to end against production on 2026-08-20: a provider with `ssn: null` took an AES write and then read back through the plaintext endpoint as the exact source value.
 
 ### 6. JWT Generation (Login)
 
