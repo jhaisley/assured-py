@@ -188,8 +188,13 @@ class ProvidersResource:
         The response dict matches
         :class:`~assured.models.providers.ProviderCreateResponse` (including
         ``source_of_joining``).
+
+        Unset fields are omitted rather than sent as ``null``: the spec types
+        ``client``, ``document_url`` and ``document_type`` as non-nullable
+        strings, so an explicit ``null`` is rejected with HTTP 400
+        ("This field may not be null.") even though all three are optional.
         """
-        return await self._client._post(_CREATE_PATH, json=data.model_dump(mode="json", exclude_none=False))
+        return await self._client._post(_CREATE_PATH, json=data.model_dump(mode="json", exclude_none=True))
 
     # ---- Org Joining Date ----
 

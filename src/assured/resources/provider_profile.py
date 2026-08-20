@@ -118,11 +118,21 @@ class ProviderProfileResource:
         """PATCH provider personal info (partial update).
 
         Backed by ``PATCH /api/v1/users/provider-personal-info/{id}/``, which
-        is now officially documented (previously reverse-engineered). Despite
-        being nominally a partial update, production requires the full model
-        on every PATCH, so this method automatically fetches the current
-        record, overlays your changes, and sends the complete payload. You
-        only need to set the fields you want to change on ``data``.
+        is now officially documented (previously reverse-engineered). This
+        method fetches the current record, overlays your changes and re-sends
+        the populated fields, so you only need to set what you want to change.
+
+        Null-valued fields are *not* re-sent. Most fields are non-nullable on
+        the way in, so echoing back a null the GET returned draws HTTP 400
+        ("This field may not be null."). This matters most right after
+        ``providers.create()``, when the profile is almost entirely null.
+
+        Note:
+            Regardless of what you are setting, this endpoint rejects any
+            PATCH that leaves citizenship unset ("Citizenship country is
+            required", "Visa number is required for non-US citizens"). Send
+            ``us_citizen`` and ``citizenship_country`` on the first write to a
+            new profile.
 
         Response-only fields (``id``, ``updated_at``, ``management_type``,
         ``personal_completion_info``, ``other_emails``, ``other_names``,
@@ -140,10 +150,17 @@ class ProviderProfileResource:
         for key in _PERSONAL_INFO_READ_ONLY:
             merged.pop(key, None)
 
-        # 3. Overlay user-provided fields (explicit None → sends null to clear)
+        # 3. Drop fetched nulls. Most fields are non-nullable on the way in, so
+        # echoing back a null the GET handed us is rejected with HTTP 400
+        # ("This field may not be null."). An unpopulated profile -- e.g. one
+        # just created via create-providers -- is almost entirely null, so
+        # without this the first PATCH after a create always fails.
+        merged = {k: v for k, v in merged.items() if v is not None}
+
+        # 4. Overlay user-provided fields (explicit None → sends null to clear)
         merged.update(data.model_dump(mode="json", exclude_unset=True))
 
-        # 4. PATCH with full payload
+        # 5. PATCH
         path = _PERSONAL_INFO.format(id=provider_id)
         resp = await self._client._patch(path, json=merged)
         return ProviderPersonalInfo.model_validate(resp)

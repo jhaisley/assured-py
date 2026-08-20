@@ -263,7 +263,12 @@ async def test_create_provider_minimal_with_primary_location(client, mock_api):
 
     sent = json.loads(route.calls.last.request.content)
     assert sent["primary_practice_location"] == "loc-1"
-    assert sent["client"] is None  # optional per new spec
+    # Unset optional fields must be omitted, not sent as null: the spec types
+    # client / document_url / document_type as non-nullable strings, and
+    # production answers an explicit null with HTTP 400 "This field may not be
+    # null." even though all three are optional.
+    for omitted in ("client", "document_url", "document_type", "org_joining_date"):
+        assert omitted not in sent
 
 
 @pytest.mark.asyncio

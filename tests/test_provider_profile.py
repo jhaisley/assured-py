@@ -112,15 +112,83 @@ async def test_update_personal_info_fetch_merge(client, mock_api):
     payload = json.loads(patch_route.calls.last.request.read())
     # Overlaid change
     assert payload["first_name"] == "Janet"
-    # Unmodified fields are merged in from the fetched record (full payload)
+    # Unmodified fields are merged in from the fetched record
     assert payload["last_name"] == "Doe"
     assert payload["primary_email_address"] == "jane@example.com"
-    # Nullable fields are sent as explicit nulls, not omitted
-    assert "middle_name" in payload
-    assert payload["middle_name"] is None
+    # Fields the GET returned as null are dropped rather than echoed back:
+    # production rejects them with HTTP 400 "This field may not be null."
+    assert "middle_name" not in payload
     # Response-only fields are stripped from the PATCH payload
     for read_only in ("id", "updated_at", "management_type", "personal_completion_info"):
         assert read_only not in payload
+
+
+@pytest.mark.asyncio
+async def test_update_personal_info_on_empty_profile(client, mock_api):
+    """A profile fresh from create-providers is almost entirely null.
+
+    Echoing those nulls back made the first PATCH after a create fail with 23
+    simultaneous "This field may not be null." errors, so the create → populate
+    flow could never complete. Only the caller's fields may be sent.
+    """
+    mock_api.get(_PERSONAL_INFO_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "id": "prof-1",
+                "first_name": None,
+                "last_name": None,
+                "individual_npi": None,
+                "gender": None,
+                "primary_email_address": None,
+                "management_type": "ADMIN_MANAGED",
+                "updated_at": "2026-08-20T17:47:44Z",
+            },
+        )
+    )
+    patch_route = mock_api.patch(_PERSONAL_INFO_URL).mock(
+        return_value=httpx.Response(200, json={"id": "prof-1", "individual_npi": "1689485294"})
+    )
+
+    result = await client.provider_profile.update_personal_info(
+        "prof-1",
+        ProviderPersonalInfoUpdate(
+            individual_npi="1689485294",
+            us_citizen=True,
+            citizenship_country="United States",
+        ),
+    )
+    assert result.individual_npi == "1689485294"
+
+    payload = json.loads(patch_route.calls.last.request.read())
+    assert payload == {
+        "individual_npi": "1689485294",
+        "us_citizen": True,
+        "citizenship_country": "United States",
+    }
+
+
+@pytest.mark.asyncio
+async def test_update_personal_info_explicit_none_clears_field(client, mock_api):
+    """Dropping fetched nulls must not break clearing a field on purpose."""
+    mock_api.get(_PERSONAL_INFO_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={"id": "prof-1", "first_name": "Jane", "caqh_id": "12345"},
+        )
+    )
+    patch_route = mock_api.patch(_PERSONAL_INFO_URL).mock(
+        return_value=httpx.Response(200, json={"id": "prof-1", "first_name": "Jane"})
+    )
+
+    await client.provider_profile.update_personal_info(
+        "prof-1",
+        ProviderPersonalInfoUpdate(caqh_id=None),
+    )
+
+    payload = json.loads(patch_route.calls.last.request.read())
+    assert "caqh_id" in payload
+    assert payload["caqh_id"] is None
 
 
 # ---- Encrypted SSN ----
