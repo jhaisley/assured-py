@@ -36,7 +36,7 @@ ASSURED_PASS=your-password
 ```
 
 > [!NOTE]
-> The API Key handles 95% of requests. However, certain undocumented endpoints like file uploading and SSN encryption require explicit user credentials (`ASSURED_USER` and `ASSURED_PASS`) to acquire an internal JWT session token. The client handles fetching and caching this JWT automatically.
+> The API Key handles 95% of requests. However, certain endpoints — file uploading (still undocumented) and SSN encryption (now in the official spec, though its JWT-only auth requirement is not) — require explicit user credentials (`ASSURED_USER` and `ASSURED_PASS`) to acquire an internal JWT session token. The client handles fetching and caching this JWT automatically.
 
 ## Quickstart
 
@@ -88,4 +88,4 @@ The domains mirror Assured's core logical groupings:
 
 ## Known Discrepancies
 
-The Assured API contains numerous behaviors that diverge from documented OpenAPI specs. To see the specific differences this SDK automatically handles under-the-hood (like Encrypted SSNs and S3 Bucket paths), check out the [API Divergence Document](API_Divergence.md).
+A recent spec update (58 → 94 endpoints) officially documented much of what this SDK had reverse-engineered — login, provider personal info, employment v1, provider documents, and the SSN endpoint among them. Several behaviors still diverge from the spec, however (Encrypted SSN payloads, JWT-only file uploads via S3 Bucket paths, the account-vs-profile ID split), and the SDK continues to handle them automatically under-the-hood. For the current list of active divergences and the quirks that survived documentation, check out the [API Divergence Document](API_Divergence.md).

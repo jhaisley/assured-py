@@ -52,6 +52,27 @@ _TRAINING = "/api/v1/users/provider-professional-training/"
 _DOCUMENTS = "/api/v1/users/provider-documents/"
 _INSURANCE = "/api/v1/users/provider-professional-liability-insurances/"
 _PERSONAL_INFO = "/api/v1/users/provider-personal-info/{id}/"
+_SSN = "/api/v1/users/retrieve-update-provider-ssn-sym-encrypted/{id}/"
+
+# Response-only personal-info fields that the documented PATCH schema does not
+# accept; they are stripped from the fetch-merge-patch payload.
+_PERSONAL_INFO_READ_ONLY = frozenset(
+    {
+        "id",
+        "last_caqh_attestation_date",
+        "other_emails",
+        "other_names",
+        "personal_completion_info",
+        "management_type",
+        "updated_at",
+        # ssn is response-only here too: production returns a masked/ciphertext
+        # value on GET, which must never be echoed back. SSN updates go through
+        # the dedicated encrypted endpoint (update_ssn). An explicitly set ssn
+        # on the update payload is still honored, as user fields are overlaid
+        # after this strip.
+        "ssn",
+    }
+)
 
 
 def _params(
@@ -80,7 +101,11 @@ class ProviderProfileResource:
     # ---- Personal Info ----
 
     async def get_personal_info(self, provider_id: str) -> ProviderPersonalInfo:
-        """GET provider personal info by provider ID."""
+        """GET provider personal info by provider profile ID.
+
+        Backed by ``GET /api/v1/users/provider-personal-info/{id}/``, which is
+        now officially documented (previously reverse-engineered).
+        """
         path = _PERSONAL_INFO.format(id=provider_id)
         data = await self._client._get(path)
         return ProviderPersonalInfo.model_validate(data)
@@ -92,30 +117,78 @@ class ProviderProfileResource:
     ) -> ProviderPersonalInfo:
         """PATCH provider personal info (partial update).
 
-        The API requires the full model on every PATCH, so this method
-        automatically fetches the current record, overlays your changes,
-        and sends the complete payload.  You only need to set the fields
-        you want to change on ``data``.
+        Backed by ``PATCH /api/v1/users/provider-personal-info/{id}/``, which
+        is now officially documented (previously reverse-engineered). Despite
+        being nominally a partial update, production requires the full model
+        on every PATCH, so this method automatically fetches the current
+        record, overlays your changes, and sends the complete payload. You
+        only need to set the fields you want to change on ``data``.
+
+        Response-only fields (``id``, ``updated_at``, ``management_type``,
+        ``personal_completion_info``, ``other_emails``, ``other_names``,
+        ``last_caqh_attestation_date``, ``ssn``) are stripped from the merged
+        payload, as the documented PATCH request schema does not accept them.
+        The fetched ``ssn`` in particular is masked/ciphertext in production
+        and must not be echoed back — use :meth:`update_ssn` to change an SSN.
+        A value you explicitly set on ``data`` is still sent.
         """
         # 1. Fetch current state as JSON-safe dict (all fields, dates as ISO strings)
         current = await self.get_personal_info(provider_id)
         merged = current.model_dump(mode="json")
 
-        # 2. Overlay user-provided fields (explicit None → sends null to clear)
+        # 2. Strip response-only fields the PATCH schema does not accept
+        for key in _PERSONAL_INFO_READ_ONLY:
+            merged.pop(key, None)
+
+        # 3. Overlay user-provided fields (explicit None → sends null to clear)
         merged.update(data.model_dump(mode="json", exclude_unset=True))
 
-        # 3. PATCH with full payload
+        # 4. PATCH with full payload
         path = _PERSONAL_INFO.format(id=provider_id)
         resp = await self._client._patch(path, json=merged)
         return ProviderPersonalInfo.model_validate(resp)
 
+    async def get_ssn(self, provider_id: str, jwt: str) -> dict[str, Any]:
+        """Retrieve a provider's SSN record from the encrypted-SSN endpoint.
+
+        Backed by ``GET /api/v1/users/retrieve-update-provider-ssn-sym-encrypted/{id}/``,
+        now officially documented. The spec describes the payload as a plain
+        ``{"id": ..., "ssn": ...}``; in production the ``ssn`` value is a
+        symmetrically encrypted token, and the endpoint requires JWT Bearer
+        auth instead of the standard API key.
+
+        Args:
+            provider_id: The provider *profile* ID.
+            jwt: A valid session JWT (see ``client.users.login``).
+
+        Returns:
+            The raw response dict (``ssn`` is ciphertext, not plaintext).
+        """
+        path = _SSN.format(id=provider_id)
+        url = self._client.settings.base_url.rstrip("/") + path
+
+        import httpx
+
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                url,
+                headers={"Authorization": f"Bearer {jwt}"},
+                timeout=30.0,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
     async def update_ssn(self, provider_id: str, ssn: str, jwt: str) -> dict[str, Any]:
         """Encrypt and update a provider's SSN.
 
-        Due to platform limitations, the SSN must be symmetrically encrypted
-        using AES-256-CTR with the JWT token as the derivation source.
-        This specific endpoint also requires the JWT for Bearer Auth instead
-        of the standard API key.
+        Backed by ``PATCH /api/v1/users/retrieve-update-provider-ssn-sym-encrypted/{id}/``,
+        which is now officially documented — but the spec describes the payload
+        as a plain ``{"ssn": "string"}`` and says nothing about encryption. In
+        production the SSN must be symmetrically encrypted using AES-256-CTR
+        with a key derived from the SHA-256 hash of the session JWT, with a
+        random 16-byte IV prefixed to the ciphertext before Base64 encoding.
+        This endpoint also requires the JWT for Bearer auth instead of the
+        standard API key. The SDK keeps the production behavior.
         """
         import base64
         import hashlib
@@ -136,8 +209,8 @@ class ProviderProfileResource:
         encrypted_ssn = base64.b64encode(iv + ciphertext).decode("ascii")
 
         # Execute PATCH Request with Bearer Auth
-        path = f"/api/v1/users/retrieve-update-provider-ssn-sym-encrypted/{provider_id}/"
-        url = self._client._settings.base_url.rstrip("/") + path
+        path = _SSN.format(id=provider_id)
+        url = self._client.settings.base_url.rstrip("/") + path
 
         import httpx
 
@@ -298,6 +371,12 @@ class ProviderProfileResource:
         limit: int | None = None,
         offset: int | None = None,
     ) -> list[Employment]:
+        """List provider employment records (one page).
+
+        Backed by ``GET /api/v1/users/provider-employment-v1/``, which is now
+        officially documented. The legacy ``/provider-employments/`` endpoint
+        has been removed from the spec; the SDK already targets v1.
+        """
         data = await self._client._get_page(_EMPLOYMENT, params=_params(provider, limit, offset))
         return [Employment.model_validate(i) for i in data.get("results", [])]
 
@@ -310,6 +389,7 @@ class ProviderProfileResource:
         return self._client.to_dataframe(records)
 
     async def create_employment(self, data: EmploymentCreate) -> dict[str, Any]:
+        """Create an employment record via ``POST /api/v1/users/provider-employment-v1/`` (now documented)."""
         return await self._client._post(_EMPLOYMENT, json=data.model_dump(mode="json", exclude_none=False))
 
     # ---- Gap History ----
@@ -383,7 +463,40 @@ class ProviderProfileResource:
 
     # ---- Documents ----
 
+    async def list_documents(
+        self,
+        *,
+        provider: str | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[ProviderDocument]:
+        """List provider documents (one page).
+
+        Backed by ``GET /api/v1/users/provider-documents/`` (new in the spec).
+        Production enforces JWT Bearer auth on this endpoint despite the spec's
+        API-key security claim, so the SDK bridges to a session JWT automatically.
+        """
+        data = await self._client._get_page(_DOCUMENTS, params=_params(provider, limit, offset), requires_jwt=True)
+        return [ProviderDocument.model_validate(i) for i in data.get("results", [])]
+
+    async def list_documents_all(self, *, provider: str | None = None) -> list[ProviderDocument]:
+        """List all provider documents across every page."""
+        records = await self._client._get_all_pages(_DOCUMENTS, params=_params(provider), requires_jwt=True)
+        return [ProviderDocument.model_validate(i) for i in records]
+
+    async def list_documents_df(self, *, provider: str | None = None) -> pd.DataFrame:
+        """List all provider documents as a pandas DataFrame."""
+        records = await self._client._get_all_pages(_DOCUMENTS, params=_params(provider), requires_jwt=True)
+        return self._client.to_dataframe(records)
+
     async def create_document(self, data: ProviderDocumentCreate) -> ProviderDocument:
+        """Associate a document with a provider.
+
+        Backed by ``POST /api/v1/users/provider-documents/``, now officially
+        documented (new spec fields: ``file_checksum``, ``uploaded_date``,
+        ``expiration_date``, ``state``). Production still requires JWT Bearer
+        auth for this endpoint, which the SDK handles automatically.
+        """
         payload = data.model_dump(mode="json", exclude_none=False)
         payload["id"] = ""
         payload["presigned_document_url"] = ""
@@ -401,9 +514,9 @@ class ProviderProfileResource:
     ) -> ProviderDocument:
         """High-level orchestration: uploads a file to S3 and associates it to a provider.
 
-        This manages both steps of the hidden endpoints automatically:
-        1. Submits file to `/api/v1/files/handle/` to acquire S3 storage URI.
-        2. Submits association to `/api/v1/users/provider-documents/`.
+        This manages both steps of the JWT-authenticated workflow automatically:
+        1. Submits file to `/api/v1/files/handle/` (still undocumented) to acquire the S3 storage URI.
+        2. Submits association to `/api/v1/users/provider-documents/` (now officially documented).
         """
         import os
 

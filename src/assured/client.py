@@ -275,16 +275,25 @@ class AssuredClient:
         self._raise_for_status(resp)
         return resp.json()
 
+    async def _delete(self, path: str, *, requires_jwt: bool = False) -> dict[str, Any] | None:
+        resp = await self._request("DELETE", path, requires_jwt=requires_jwt)
+        self._raise_for_status(resp)
+        if resp.status_code == 204 or not resp.content:
+            return None
+        return resp.json()
+
     # ------------------------------------------------------------------
     # Pagination helpers
     # ------------------------------------------------------------------
 
-    async def _get_all_pages(self, path: str, *, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    async def _get_all_pages(
+        self, path: str, *, params: dict[str, Any] | None = None, requires_jwt: bool = False
+    ) -> list[dict[str, Any]]:
         """Fetch every page and return all ``results`` concatenated."""
         all_results: list[dict[str, Any]] = []
         params = dict(params or {})
         while True:
-            data = await self._get(path, params=params)
+            data = await self._get(path, params=params, requires_jwt=requires_jwt)
             all_results.extend(data.get("results", []))
             next_url = data.get("next")
             if not next_url:
@@ -296,9 +305,11 @@ class AssuredClient:
                 params["limit"] = limit_val
         return all_results
 
-    async def _get_page(self, path: str, *, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    async def _get_page(
+        self, path: str, *, params: dict[str, Any] | None = None, requires_jwt: bool = False
+    ) -> dict[str, Any]:
         """Fetch a single page and return the raw paginated response dict."""
-        return await self._get(path, params=params)
+        return await self._get(path, params=params, requires_jwt=requires_jwt)
 
     @staticmethod
     def to_dataframe(records: list[dict[str, Any]]) -> pd.DataFrame:

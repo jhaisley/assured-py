@@ -5,10 +5,11 @@ from __future__ import annotations
 import httpx
 import pytest
 
-from assured.models.tasks import TaskCreate
+from assured.models.tasks import ExpirableUpdate, TaskCreate
 from tests.conftest import paginated_response
 
 _EXPIRABLES_URL = "https://test-api.example.com/api/v1/task-management/expirables/"
+_EXPIRABLE_DETAIL_URL = "https://test-api.example.com/api/v1/task-management/expirables/exp-1/"
 _TASKS_URL = "https://test-api.example.com/api/v1/task-management/tasks/"
 _TASK_DETAIL_URL = "https://test-api.example.com/api/v1/task-management/tasks/task-1/"
 
@@ -29,6 +30,41 @@ async def test_list_expirables(client, mock_api):
     tasks = await client.tasks.list_expirables()
     assert len(tasks) == 1
     assert tasks[0].name == "License Renewal"
+
+
+@pytest.mark.asyncio
+async def test_get_expirable(client, mock_api):
+    mock_api.get(_EXPIRABLE_DETAIL_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "id": "exp-1",
+                "name": "License Renewal",
+                "archived": False,
+                "assignee_name": "Jane Doe",
+                "client_details": {"id": "client-1", "name": "Acme Health"},
+            },
+        )
+    )
+
+    task = await client.tasks.get_expirable("exp-1")
+    assert task.id == "exp-1"
+    assert task.archived is False
+    assert task.assignee_name == "Jane Doe"
+
+
+@pytest.mark.asyncio
+async def test_update_expirable(client, mock_api):
+    route = mock_api.patch(_EXPIRABLE_DETAIL_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={"id": "exp-1", "name": "License Renewal", "archived": True},
+        )
+    )
+
+    task = await client.tasks.update_expirable("exp-1", ExpirableUpdate(archived=True))
+    assert task.archived is True
+    assert route.calls.last.request.content == b'{"archived":true}'
 
 
 @pytest.mark.asyncio

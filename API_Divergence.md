@@ -2,96 +2,101 @@
 
 This document outlines the known discrepancies between the official OpenAPI specification (`Assured Platform API.json`) and the actual operational behavior of the production Assured Platform API as implemented in the `assured` SDK.
 
+A recent spec update (58 → 94 endpoints) officially documented several endpoints this SDK had previously reverse-engineered. Those items now live under **Formerly undocumented — now in the official spec** below; the behavioral quirks recorded there (encryption, JWT-only auth, full-payload PATCH) still hold in production. Section numbers are historical and stable — SDK docstrings reference them by number — so sections keep their original numbers when they move between groups.
+
 ---
 
 > [!WARNING]
-> These endpoints and payloads deviate from the documented spec. The `assured` SDK has been built to support **actual** production behavior, superseding the official OpenAPI schema in these cases.
+> The endpoints and payloads under **Active divergences** deviate from the documented spec. The `assured` SDK has been built to support **actual** production behavior, superseding the official OpenAPI schema in these cases.
 
-## 1. Provider Personal Info (`provider-personal-info`)
+## Active divergences
 
-**Spec:** Undocumented entirely in the OpenAPI spec.
-**Reality:** The API exposes comprehensive GET and PATCH endpoints used to manage a provider's primary demographic, descriptive, and background context forms.
-
-- **Methods:** `GET /api/v1/users/provider-personal-info/{profile_id}/` and `PATCH`.
-- **Payload/Model:** Contains 55 fields encompassing demographics (name, DOB, SSN, NPI, CAQH ID), residency addresses, correspondence addresses, practice settings, languages, ECFMG status, visa/citizenship details, and military service records. 
-- **Quirk:** The API requires the *complete* model payload when making `PATCH` requests; omitting unmodified existing fields will trigger `HTTP 400 Validation Error`. Furthermore, `null` must be used strictly for nullable fields rather than omitting the key. The SDK's `update_personal_info` handles this automatically via fetch-merge-patch.
-
-## 2. Provider Employment Endpoints
-
-**Spec:** Documented as `GET / POST / PATCH / DELETE` on `/api/v1/users/provider-employments/`.
-**Reality:** The platform has silently migrated to a `v1` endpoint for provider employments that carries a drastically different schema.
-
-- **Endpoint:** Instead of `/api/v1/users/provider-employments/`, the API expects `/api/v1/users/provider-employment-v1/`.
-- **Schema Differences:** The new endpoint requires/returns many additional and renamed fields.
-  - *Deprecated/Replaced Fields:* `is_current` (now `currently_employed`), `reason_for_leaving` (now `reason_for_discontinuance`).
-  - *New Fields explicitly required:* `type`, `gap_explanation`, `address`, `city`, `state`, `country`, `zip_code`, `phone_number`, `email_address`, `contact_information`, `document`.
-- **Compatibility:** The SDK models (`Employment` and `EmploymentCreate`) include both the new specific `v1` fields and the older schema fields to ensure backward compatibility.
-
-## 3. Provider Education Endpoints
-
-**Spec:** The schema defines a simple model containing `institution_name`, `degree`, `start_date`, and `end_date`.
-**Reality:** The actual endpoint requires a much richer location-oriented schema to track the exact identity and place of education.
-
-- **Schema Differences:**
-  - *Deprecated/Replaced Fields:* `institution_name` generally superseded by `name`.
-  - *New Fields added:* `city`, `state`, `country`, `is_primary`, `address_street_1`, `address_street_2`, `postal_code`.
-- **Compatibility:** Like employment, the SDK integrates these richer properties onto the SDK `Education` models while preserving `institution_name` for legacy use.
-
-## 4. Provider Account vs Provider Profile IDs
+### 4. Provider Account vs Provider Profile IDs
 
 **Spec:** Often implies a generic "Provider ID" is passed across routes.
 **Reality:** The API is highly sensitive to the distinction between a Provider Account and a Provider Profile.
 
-- **Provider Account ID:** The core identity record (UUID), passed to the list and invite endpoints.
-- **Provider Profile ID:** A separate UUID 1:1 linked to the account, which must be used for nearly all `provider_profile` domains (Personal Info, Certifications, Licenses, Insurance, etc.). Mixing them up causes the API to fail with `404` or `422`.
-- **SDK Solution:** Built a dedicated resolution helper via `client.providers.get_profile_id(account_id)` to gracefully bridge this gap automatically.
+| ID Type | Usage |
+|---|---|
+| **Provider Account ID** | The core identity record (UUID), passed to the list and invite endpoints. |
+| **Provider Profile ID** | A separate UUID 1:1 linked to the account, used by nearly all `provider_profile` domains (personal info, certifications, licenses, insurance, etc.) and the org-joining-date endpoints. |
 
-## 5. Encrypted SSN Endpoint
+Mixing them up causes the API to fail with `404` or `422`. The SDK provides a dedicated resolution helper, `client.providers.get_profile_id(account_id)`, to bridge this gap automatically.
 
-**Spec:** Not documented in the API behavior.
-**Reality:** The platform requires SSNs to be submitted as a symmetrically encrypted token rather than plaintext.
+### 7. File Uploads and Presigned URLs
 
-- **Endpoint:** `PATCH /api/v1/users/retrieve-update-provider-ssn-sym-encrypted/{provider_profile_id}/`
-- **Authentication:** Ironically, this specific profile endpoint rejects standard API Keys and strictly requires standard `Authorization: Bearer {jwt}` headers using a valid session JWT token.
-- **Payload & Encryption:** 
-  - Expects `{"ssn": "<Base64 Encoded Ciphertext>"}`
-  - The ciphertext must be encoded using an `AES-256-CTR` standard.
-  - The symmetric key is dynamically generated via a `SHA256` hash of the provided JWT token.
-  - A random 16-byte `IV` is prefixed against the ciphertext before Base64 encoding.
-
-## 6. JWT Generation (Login)
-
-**Spec:** No programmatic configuration or endpoint for acquiring Session JWTs.
-**Reality:** The frontend relies on an undocumented login endpoint to generate the required JWTs.
-
-- **Endpoint:** `POST /api/v1/users/login/`
-- **Payload:** `{"email": "...", "password": "...", "remember": true}`
-- **SDK Solution:** Exposed `await client.users.login(email, password)` and integrated a lazy caching mechanism securely into the `AssuredClient`. The client pulls credentials via `pydantic-settings` (`ASSURED_USER` and `ASSURED_PASS`) from the environment, automating JWT injection when standard API Key authentication isn't enough.
-
-## 7. File Uploads and Presigned URLs
-
-**Spec:** The OpenAPI spec expects generic REST models.
+**Spec:** Still absent — the new spec documents no `/api/v1/files/` routes at all.
 **Reality:** The entire document handling subsystem is built on heavily customized AWS storage APIs driven through the Assured Django interface.
 
 - **Storage Extraction:** Files must be uploaded to `/api/v1/files/handle/` using a raw `multipart/form-data` payload containing a UUID `name` key, and the binary data under `file`. This endpoint specifically enforces JWT Bearer authentication. It returns an `s3://` object reference (`file_url`).
-- **Temporary Access:** Due to S3 protections, URLs cannot be exposed safely. The SDK invokes `/api/v1/files/presign-s3-url/presign_s3_url/` feeding it back the `s3://` path which brokers a limited-time publicly accessible URL.
+- **Temporary Access:** Due to S3 protections, URLs cannot be exposed safely. The SDK invokes `/api/v1/files/presign-s3-url/presign_s3_url/`, feeding it back the `s3://` path, which brokers a limited-time publicly accessible URL.
+- **Accepted formats:** PDF, PNG, JPEG only.
 
-## 8. Provider Document Associations
+### 8. Provider Document Associations
 
-**Spec:** Documents are typically grouped loosely without strict multi-stage processes explicitly outlined.
-**Reality:** Linking an actual file binary to a Provider Profile is a two-step process.
+**Spec:** `GET` / `POST /api/v1/users/provider-documents/` is now officially documented — but under the standard API-key security scheme, with no mention of the upload flow it depends on.
+**Reality:** Linking an actual file binary to a Provider Profile is a two-step process, and both steps require JWT Bearer authentication in production.
 
-- **Process:** 
-  1. The user must first process the raw file via the JWT-restricted route `/api/v1/files/handle/` to extract the `s3://` URI.
-  2. The user then posts a specialized schema mapping the `document_url` to a `provider` id at `/api/v1/users/provider-documents/` (which *also* expects JWT constraints).
+- **Process:**
+  1. The user must first process the raw file via the JWT-restricted (and still undocumented) route `/api/v1/files/handle/` to extract the `s3://` URI (see section 7).
+  2. The user then posts a specialized schema mapping the `document_url` to a `provider` id at `/api/v1/users/provider-documents/` — which, despite the spec's API-key auth claim, *also* expects JWT constraints in production.
 - **SDK Solution:** Built an abstraction `.upload_and_associate_document()` to bridge this workflow securely underneath a single execution wrapper while preserving accurate typing semantics!
 
-## 9. Users List Endpoint
+### 9. Users List Endpoint
 
-**Spec:** Documented as `GET /api/v1/users/users-list/`.
-**Reality:** The documented endpoint is dead (returns errors). The platform has silently migrated to an external-facing variant.
+**Spec:** Originally documented as `GET /api/v1/users/users-list/`; that route has now been **removed from the spec entirely** (see *Removed from the spec* below). Its working replacement remains undocumented.
+**Reality:** The documented endpoint was dead (returned errors) long before its removal. The platform silently migrated to an external-facing variant.
 
-- **Working Endpoint:** `GET /api/v1/users/external-users-list/`
+- **Working Endpoint:** `GET /api/v1/users/external-users-list/` — still absent from the new spec.
 - **Response:** Same paginated structure (`count`, `next`, `previous`, `results`), same core user fields.
 - **New Fields:** `invited_at`, `source_of_joining`, `client` (UUID), `client_name` — not present in the original spec.
-- **SDK Solution:** The SDK points to the working endpoint and includes the additional fields on the `User` model automatically.
+- **SDK Solution:** The SDK points to the working endpoint and includes the additional fields on the `User` model automatically. (The new spec does add a documented `GET /api/v1/users/user-list-slim/`, exposed as `client.users.list_slim()`, but it returns a reduced field set and is not a replacement for the external list.)
+
+### 10. Password Reset
+
+**Spec:** Not documented. The spec offers only `POST /api/v1/users/change-password/`, which requires knowing the current password.
+**Reality:** The frontend triggers password-reset emails through an undocumented endpoint.
+
+- **Endpoint:** `POST /api/v1/users/password-reset/` with `{"email": "..."}`.
+- **SDK Solution:** Exposed as `client.users.password_reset(email)`.
+
+## Formerly undocumented — now in the official spec
+
+The spec update brought the endpoints below into the official OpenAPI document. They are no longer divergences in the "endpoint does not exist on paper" sense, but the behavioral quirks noted here **still apply in production** and remain unspecified.
+
+### 1. Provider Personal Info (`provider-personal-info`)
+
+**Spec (updated):** `GET` and `PATCH /api/v1/users/provider-personal-info/{profile_id}/` are now documented, with a 67-field schema encompassing demographics (name, DOB, NPI, CAQH ID), residency addresses, correspondence addresses, practice settings, languages, ECFMG status, visa/citizenship details, and military service records.
+**Standing quirk:** The spec models `PATCH` as a standard partial update (operationId `partialUpdateProviderPersonalInfo`, no required fields). Production disagrees: the API still requires the *complete* model payload — omitting unmodified existing fields triggers `HTTP 400 Validation Error`, and `null` must be used strictly for nullable fields rather than omitting the key. This divergence stands; the SDK's `update_personal_info` continues to handle it automatically via fetch-merge-patch (and now also strips the spec's response-only fields from the merged payload — including `ssn`, whose fetched value is masked/ciphertext in production and must never be echoed back; SSN changes go through the dedicated encrypted endpoint in section 5).
+
+### 2. Provider Employment Endpoints
+
+**Spec (updated):** `GET` / `POST /api/v1/users/provider-employment-v1/` — the endpoint the platform silently migrated to, and the one this SDK already targeted — is now the officially documented route. The legacy `/api/v1/users/provider-employments/` has been removed from the spec (see *Removed from the spec* below).
+**Standing notes:** The documented schema matches what the SDK reverse-engineered (`currently_employed`, `reason_for_discontinuance`, address/contact fields, `gap_explanation`, `document`). The SDK's `Employment` and `EmploymentCreate` models retain the older schema's fields (`position`, `type`, `is_current`, `reason_for_leaving`) as legacy extras for backward compatibility; they are absent from the official schema.
+
+### 3. Provider Education Endpoints
+
+**Spec (updated):** The education schema has caught up with reality: `name`, `city`, `state`, `country`, `is_primary`, `address_street_1`, `address_street_2`, `postal_code`, and `document` are all now documented on `/api/v1/users/provider-education/`.
+**Standing notes:** `institution_name` — the old spec's field — is retained on the SDK `Education` models for legacy use only; the official schema uses `name`.
+
+### 5. Encrypted SSN Endpoint
+
+**Spec (updated):** `GET` and `PATCH /api/v1/users/retrieve-update-provider-ssn-sym-encrypted/{profile_id}/` are now documented — but as a plain `{"ssn": "<string>"}` payload under the standard API-key security scheme.
+**Standing quirks (both undocumented):**
+
+- **Authentication:** Production rejects standard API Keys on this endpoint and strictly requires `Authorization: Bearer {jwt}` headers using a valid session JWT token.
+- **Payload & Encryption:** The `ssn` value must be a Base64-encoded ciphertext using the `AES-256-CTR` standard. The symmetric key is dynamically generated via a `SHA256` hash of the provided JWT token, and a random 16-byte `IV` is prefixed against the ciphertext before Base64 encoding. The `GET` likewise returns ciphertext, not plaintext.
+
+### 6. JWT Generation (Login)
+
+**Spec (updated):** `POST /api/v1/users/login/` is now documented (operationId `userLogin`), including the full response payload (`data` with `jwt.access` / `jwt.refresh`, `msg`, and `extra_data` carrying client/MFA/feature-flag info).
+**Standing quirk:** The `remember` flag the frontend sends is accepted by production but absent from the documented request schema (which lists only `email` and `password`).
+
+- **SDK Solution:** `await client.users.login(email, password)` still returns just the access token and feeds the client's lazy JWT cache (credentials pulled via `pydantic-settings` from `ASSURED_USER` and `ASSURED_PASS`, automating JWT injection when standard API Key authentication isn't enough). The new `client.users.login_full()` returns the full documented payload.
+
+## Removed from the spec
+
+The spec update also deleted endpoints outright:
+
+- `GET /api/v1/users/users-list/` — was already dead in production (see section 9); the SDK never depended on it.
+- `GET` / `POST /api/v1/users/provider-employments/` — superseded by `provider-employment-v1` (see section 2); the SDK already targeted the v1 route.

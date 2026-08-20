@@ -7,15 +7,21 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 from assured.models.providers import (
+    CaqhImportRequest,
+    CaqhImportRequestCreate,
+    CaqhImportRequestListParams,
     PracticeLocationProvidersCreate,
     Provider,
     ProviderCAQHImport,
     ProviderCreate,
     ProviderInvite,
     ProviderListParams,
+    ProviderOrgJoiningDate,
 )
 
 if TYPE_CHECKING:
+    from datetime import date
+
     from assured.client import AssuredClient
 
 _LIST_PATH = "/api/v1/users/providers-list/"
@@ -24,6 +30,8 @@ _CAQH_PATH = "/api/v1/users/import-single-provider-with-caqh/"
 _CREATE_PATH = "/api/v1/users/create-providers/"
 _NOT_IN_PRACTICE_LOC_PATH = "/api/v1/users/providers-not-in-practice-loc/"
 _PRACTICE_LOC_PROVIDERS_PATH = "/api/v1/users/practice-location-providers/"
+_REQUEST_CAQH_IMPORT_PATH = "/api/v1/users/request-caqh-import/"
+_ORG_JOINING_DATE_PATH = "/api/v1/users/update-provider-org-joining-date/{id}/"
 
 
 class ProvidersResource:
@@ -130,11 +138,103 @@ class ProvidersResource:
         """Import a single provider using CAQH credentials."""
         return await self._client._post(_CAQH_PATH, json=data.model_dump(mode="json", exclude_none=False))
 
+    async def request_caqh_import(self, data: CaqhImportRequestCreate) -> dict[str, Any]:
+        """Request a CAQH import (provider-authorized re-import).
+
+        Args:
+            data: The CAQH import request payload (``caqh_username``,
+                ``caqh_password``, ``full_name`` and ``signature`` are all
+                required by the spec).
+
+        Returns:
+            The created CAQH import request record as a raw dict.
+        """
+        return await self._client._post(
+            _REQUEST_CAQH_IMPORT_PATH, json=data.model_dump(mode="json", exclude_none=False)
+        )
+
+    async def list_caqh_import_requests(
+        self, params: CaqhImportRequestListParams | None = None, **kwargs: Any
+    ) -> list[CaqhImportRequest]:
+        """List CAQH import requests (one page).
+
+        Args:
+            params: Optional query parameters (``limit``, ``offset``,
+                ``provider``).
+            **kwargs: Extra query parameters merged over ``params``.
+
+        Returns:
+            The CAQH import request records for one page.
+        """
+        raw_params = params.model_dump(exclude_none=False) if params else {}
+        raw_params.update(kwargs)
+        data = await self._client._get_page(_REQUEST_CAQH_IMPORT_PATH, params=raw_params)
+        return [CaqhImportRequest.model_validate(item) for item in data.get("results", [])]
+
+    async def list_all_caqh_import_requests(
+        self, params: CaqhImportRequestListParams | None = None, **kwargs: Any
+    ) -> list[CaqhImportRequest]:
+        """List all CAQH import requests (auto-paginated)."""
+        raw_params = params.model_dump(exclude_none=False) if params else {}
+        raw_params.update(kwargs)
+        records = await self._client._get_all_pages(_REQUEST_CAQH_IMPORT_PATH, params=raw_params)
+        return [CaqhImportRequest.model_validate(item) for item in records]
+
     # ---- Create ----
 
     async def create(self, data: ProviderCreate) -> dict[str, Any]:
-        """Create a new provider (without CAQH)."""
+        """Create a new provider (without CAQH).
+
+        The response dict matches
+        :class:`~assured.models.providers.ProviderCreateResponse` (including
+        ``source_of_joining``).
+        """
         return await self._client._post(_CREATE_PATH, json=data.model_dump(mode="json", exclude_none=False))
+
+    # ---- Org Joining Date ----
+
+    async def get_org_joining_date(self, provider_profile_id: str) -> ProviderOrgJoiningDate:
+        """Retrieve a provider's organization joining date.
+
+        Note:
+            The path ``{id}`` for this endpoint is the provider **profile**
+            ID (``provider_profile_id``), not the provider account ID — see
+            ``API_Divergence.md`` section 4. Resolve it with
+            :meth:`get_profile_id` if you only have the account ID.
+
+        Args:
+            provider_profile_id: The provider profile ID.
+
+        Returns:
+            The provider's organization joining date.
+        """
+        path = _ORG_JOINING_DATE_PATH.format(id=provider_profile_id)
+        data = await self._client._get(path)
+        return ProviderOrgJoiningDate.model_validate(data)
+
+    async def update_org_joining_date(
+        self, provider_profile_id: str, org_joining_date: date | str | None
+    ) -> ProviderOrgJoiningDate:
+        """Update a provider's organization joining date.
+
+        Note:
+            The path ``{id}`` for this endpoint is the provider **profile**
+            ID (``provider_profile_id``), not the provider account ID — see
+            ``API_Divergence.md`` section 4. Resolve it with
+            :meth:`get_profile_id` if you only have the account ID.
+
+        Args:
+            provider_profile_id: The provider profile ID.
+            org_joining_date: The new joining date (``datetime.date`` or
+                ``YYYY-MM-DD`` string).
+
+        Returns:
+            The updated provider organization joining date record.
+        """
+        value = org_joining_date.isoformat() if hasattr(org_joining_date, "isoformat") else org_joining_date
+        path = _ORG_JOINING_DATE_PATH.format(id=provider_profile_id)
+        data = await self._client._patch(path, json={"org_joining_date": value})
+        return ProviderOrgJoiningDate.model_validate(data)
 
     # ---- Practice Locations ----
 

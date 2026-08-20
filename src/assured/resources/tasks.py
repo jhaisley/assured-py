@@ -9,6 +9,7 @@ import pandas as pd
 from assured.models.tasks import (
     ExpirableListParams,
     ExpirableTask,
+    ExpirableUpdate,
     Task,
     TaskCreate,
     TaskListParams,
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from assured.client import AssuredClient
 
 _EXPIRABLES_PATH = "/api/v1/task-management/expirables/"
+_EXPIRABLE_DETAIL_PATH = "/api/v1/task-management/expirables/{task_id}/"
 _TASKS_PATH = "/api/v1/task-management/tasks/"
 _TASK_DETAIL_PATH = "/api/v1/task-management/tasks/{task_id}/"
 _TASK_TIMELINE_PATH = "/api/v1/task-management/task-timelines/{task_id}/"
@@ -51,6 +53,35 @@ class TasksResource:
         raw_params.update(kwargs)
         records = await self._client._get_all_pages(_EXPIRABLES_PATH, params=raw_params)
         return self._client.to_dataframe(records)
+
+    async def get_expirable(self, task_id: str) -> ExpirableTask:
+        """Get a single expirable task by ID.
+
+        Args:
+            task_id: Unique identifier of the expirable task.
+
+        Returns:
+            The expirable task.
+        """
+        path = _EXPIRABLE_DETAIL_PATH.format(task_id=task_id)
+        data = await self._client._get(path)
+        return ExpirableTask.model_validate(data)
+
+    async def update_expirable(self, task_id: str, data: ExpirableUpdate) -> ExpirableTask:
+        """Partially update an expirable task (e.g. archive/unarchive it).
+
+        Only fields explicitly set on ``data`` are sent in the PATCH payload.
+
+        Args:
+            task_id: Unique identifier of the expirable task.
+            data: Fields to update (currently ``archived``).
+
+        Returns:
+            The updated expirable task.
+        """
+        path = _EXPIRABLE_DETAIL_PATH.format(task_id=task_id)
+        resp = await self._client._patch(path, json=data.model_dump(mode="json", exclude_unset=True))
+        return ExpirableTask.model_validate(resp)
 
     # ---- Tasks ----
 
