@@ -66,7 +66,7 @@ Mixing them up causes the API to fail with `404` or `422`. The SDK provides a de
 **Reality:** Optional means *omit the key*, never *send `null`*. Those three are typed as plain (non-nullable) strings, so passing `null` fails with `HTTP 400 — "This field may not be null."` on all three at once, even though the spec calls them optional. Verified against production 2026-08-20.
 
 - **SDK Solution:** `providers.create()` serializes with `exclude_none=True`, so unset fields are omitted. `client` is assigned server-side from the caller's org when absent.
-- **Same shape elsewhere:** `providers.invite()` and `providers.import_with_caqh()` still serialize with `exclude_none=False` and are likely affected identically — untested, as both have outward-facing side effects (`invite` sends email to the provider).
+- **Same shape elsewhere:** `providers.invite()` and `providers.import_with_caqh()` now also serialize with `exclude_none=True` for the same reason. Neither has been exercised against production (both have outward-facing side effects — `invite` sends email to the provider), but omitting unset keys matches the verified semantics of their sibling `create()` and is what the pre-update payloads (before these optional fields existed) always did.
 - **Related:** Section 1 documents the same optional-vs-nullable confusion on `provider-personal-info`, where it is considerably more damaging.
 
 ## Formerly undocumented — now in the official spec

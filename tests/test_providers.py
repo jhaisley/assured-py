@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 
@@ -83,6 +85,12 @@ async def test_invite_providers(client, mock_api):
         ]
     )
     assert result[0]["id"] == "new-1"
+
+    # Unset optional fields (cc_emails, primary_practice_location, ...) must be
+    # omitted, not sent as null — production rejects explicit null for
+    # non-nullable optional fields (API_Divergence.md section 11).
+    sent = json.loads(mock_api.calls.last.request.content)
+    assert sent == [{"email": "new@example.com", "first_name": "New", "last_name": "Doc"}]
 
 
 @pytest.mark.asyncio
@@ -293,6 +301,13 @@ async def test_import_with_caqh(client, mock_api):
         )
     )
     assert result["id"] == "imp-1"
+
+    # Unset first_name/last_name (optional since the spec update) must be
+    # omitted, not sent as null (API_Divergence.md section 11).
+    sent = json.loads(mock_api.calls.last.request.content)
+    assert "first_name" not in sent
+    assert "last_name" not in sent
+    assert sent["primary_practice_location"] == "loc-1"
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@
 
 This document outlines the known discrepancies between the official OpenAPI specification and the actual operational behavior of the production Assured Platform API.
 
-A recent spec update (58 → 94 endpoints) officially documented several endpoints this SDK had previously reverse-engineered. Those items now live under **Formerly undocumented — now in the official spec** below; the behavioral quirks recorded there (encryption, JWT-only auth, full-payload PATCH) still hold in production. Section numbers are historical and stable — SDK docstrings reference them by number — so sections keep their original numbers when they move between groups.
+A recent spec update (58 → 94 endpoints) officially documented several endpoints this SDK had previously reverse-engineered. Those items now live under **Formerly undocumented — now in the official spec** below; the behavioral quirks recorded there (encryption, JWT-only auth, optional-vs-nullable PATCH fields) still hold in production. Section numbers are historical and stable — SDK docstrings reference them by number — so sections keep their original numbers when they move between groups.
 
 !!! warning
     The endpoints and payloads under **Active divergences** deviate from the documented spec. The `assured-py` SDK has been built to support **actual** production behavior, superseding the official OpenAPI schema in these cases.
@@ -63,6 +63,16 @@ The SDK's `upload_and_associate_document()` abstracts this into a single call.
 - **Endpoint:** `POST /api/v1/users/password-reset/` with `{"email": "..."}`.
 - **SDK Solution:** Exposed as `client.users.password_reset(email)`.
 
+### 11. Optional-but-not-nullable request fields
+
+**Spec:** `POST /api/v1/users/create-providers/` requires only `email`, `first_name` and `last_name`. `client`, `document_url` and `document_type` are optional.
+
+**Reality:** Optional means *omit the key*, never *send `null`*. Those three are typed as plain (non-nullable) strings, so passing `null` fails with `HTTP 400 — "This field may not be null."` on all three at once, even though the spec calls them optional. Verified against production 2026-08-20.
+
+- **SDK Solution:** `providers.create()` serializes with `exclude_none=True`, so unset fields are omitted. `client` is assigned server-side from the caller's org when absent.
+- **Same shape elsewhere:** `providers.invite()` and `providers.import_with_caqh()` now also serialize with `exclude_none=True` for the same reason. Neither has been exercised against production (both have outward-facing side effects — `invite` sends email to the provider), but omitting unset keys matches the verified semantics of their sibling `create()` and is what the pre-update payloads (before these optional fields existed) always did.
+- **Related:** Section 1 documents the same optional-vs-nullable confusion on `provider-personal-info`, where it is considerably more damaging.
+
 ## Formerly undocumented — now in the official spec
 
 The spec update brought the endpoints below into the official OpenAPI document. They are no longer divergences in the "endpoint does not exist on paper" sense, but the behavioral quirks noted here **still apply in production** and remain unspecified.
@@ -71,7 +81,13 @@ The spec update brought the endpoints below into the official OpenAPI document. 
 
 **Spec (updated):** `GET` and `PATCH` on `/api/v1/users/provider-personal-info/{profile_id}/` are now documented, with a 67-field schema encompassing demographics (name, DOB, NPI, CAQH ID), residency addresses, correspondence addresses, practice settings, languages, ECFMG status, visa/citizenship details, and military service records.
 
-**Standing quirk:** The spec models `PATCH` as a standard partial update (operationId `partialUpdateProviderPersonalInfo`, no required fields). Production disagrees: the API still requires the *complete* model payload — omitting unmodified fields triggers `HTTP 400`, and `null` must be sent explicitly for nullable fields rather than omitting the key. This divergence stands; the SDK's `update_personal_info` continues to handle it automatically via fetch-merge-patch (and now also strips the spec's response-only fields from the merged payload — including `ssn`, whose fetched value is masked/ciphertext in production and must never be echoed back; SSN changes go through the dedicated encrypted endpoint in section 5).
+**Standing quirk:** The spec models `PATCH` as a standard partial update (operationId `partialUpdateProviderPersonalInfo`, no required fields). Production diverges in two ways — but *not* in the way previously recorded here.
+
+- **Nulls are rejected, not required.** This document previously claimed the API demands the complete model and that `null` must be sent rather than omitting a key. That is backwards. Most fields are non-nullable on the way in, so an explicit `null` draws `HTTP 400 — "This field may not be null."` A genuinely partial payload of three fields is accepted. Verified against production 2026-08-20.
+- **Consequence for new providers.** A profile fresh from `create-providers` is almost entirely `null`, so a fetch-merge-patch that echoed those nulls back failed with **23 simultaneous** "may not be null" errors, making the create → populate flow impossible to complete. `update_personal_info` now drops null-valued fields from the merged payload; an explicit `None` on the *update* model is still sent, so clearing a field on purpose still works.
+- **Citizenship is required on every write.** Independent of what you are setting, the endpoint rejects any `PATCH` leaving citizenship unset: `"Citizenship country is required"` and `"Visa number is required for non-US citizens"`. The first write to a new profile must include `us_citizen` and `citizenship_country`. Nothing in the spec indicates this.
+
+The SDK still strips the spec's response-only fields from the merged payload — including `ssn`, whose fetched value is masked/ciphertext in production and must never be echoed back; SSN changes go through the dedicated encrypted endpoint in section 5.
 
 ### 2. Provider Employment Endpoints
 

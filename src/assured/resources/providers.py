@@ -128,15 +128,26 @@ class ProvidersResource:
     # ---- Invite ----
 
     async def invite(self, providers: list[ProviderInvite]) -> list[dict[str, Any]]:
-        """Invite one or more providers to the platform."""
-        payload = [p.model_dump(mode="json", exclude_none=False) for p in providers]
+        """Invite one or more providers to the platform.
+
+        Unset fields are omitted rather than sent as ``null`` (see
+        API_Divergence.md section 11): production rejects explicit ``null``
+        for optional-but-non-nullable fields with HTTP 400
+        ("This field may not be null.").
+        """
+        payload = [p.model_dump(mode="json", exclude_none=True) for p in providers]
         return await self._client._post(_INVITE_PATH, json=payload)
 
     # ---- CAQH Import ----
 
     async def import_with_caqh(self, data: ProviderCAQHImport) -> dict[str, Any]:
-        """Import a single provider using CAQH credentials."""
-        return await self._client._post(_CAQH_PATH, json=data.model_dump(mode="json", exclude_none=False))
+        """Import a single provider using CAQH credentials.
+
+        Unset fields (e.g. ``first_name`` / ``last_name``, optional since the
+        spec update) are omitted rather than sent as ``null`` (see
+        API_Divergence.md section 11).
+        """
+        return await self._client._post(_CAQH_PATH, json=data.model_dump(mode="json", exclude_none=True))
 
     async def request_caqh_import(self, data: CaqhImportRequestCreate) -> dict[str, Any]:
         """Request a CAQH import (provider-authorized re-import).
