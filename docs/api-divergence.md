@@ -82,8 +82,10 @@ The SDK's `upload_and_associate_document()` abstracts this into a single call.
 
 The bundled file is a hand-curated excerpt, not the whole API. An endpoint's absence from it means nothing — check the live schema before concluding something does not exist. Section 5's two extra SSN endpoints were found this way; neither appears in the bundled copy.
 
+The repo keeps a snapshot as `Assured Production Schema.yaml` (fetched 2026-08-20, 728 paths), since the unauthenticated schema endpoint could disappear at any time. Refresh it with:
+
 ```bash
-curl -s https://prod-backend.withassured.com/api/schema/ -o live-schema.yaml
+curl -s https://prod-backend.withassured.com/api/schema/ -o "Assured Production Schema.yaml"
 ```
 
 - **Caveat:** the live schema is generated from the server's serializers, so it reflects wiring rather than behaviour. It documents `PATCH` on the plaintext SSN endpoint, which production rejects outright (section 5). Treat it as the authoritative list of *what exists*, and this document as the record of *what actually works*.
