@@ -68,14 +68,10 @@ Most list methods accept keyword arguments that map to the API's query parameter
 
 ```python
 # Filter providers by a specific provider ID
-providers = await client.providers.list(
-    params=ProviderListParams(id_in="some-uuid")
-)
+providers = await client.providers.list(params=ProviderListParams(id_in="some-uuid"))
 
 # Filter certifications by provider
-certs = await client.provider_profile.list_certifications_all(
-    provider="provider-profile-uuid"
-)
+certs = await client.provider_profile.list_certifications_all(provider="provider-profile-uuid")
 ```
 
 ## How Auto-Pagination Works

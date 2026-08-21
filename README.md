@@ -44,10 +44,10 @@ ASSURED_PASS=your-password
 import asyncio
 from assured import AssuredClient
 
+
 async def run():
     # Automatically loads configuration from your `.env` file using pydantic-settings
     async with AssuredClient() as client:
-        
         # 1. Standard API Key usage: List all providers into a DataFrame
         providers_df = await client.providers.list_df()
         print(providers_df[["full_name", "npi", "email"]])
@@ -55,9 +55,9 @@ async def run():
         # 2. Extract provider details
         detail = await client.credentialing.get_request("some-uuid")
         provider_profile_id = detail.provider_id
-        
+
         # 3. Use undocumented JWT bridging: Upload and associate a document seamlessly!
-        # The client recognizes this requires a JWT, fetches one leveraging your User credentials, 
+        # The client recognizes this requires a JWT, fetches one leveraging your User credentials,
         # posts the multipart payload to S3, and links it into the provider profile.
         contract_bytes = b"..."
         document = await client.provider_profile.upload_and_associate_document(
@@ -67,10 +67,11 @@ async def run():
             document_name="IHCP Rendering Provider Agreement",
             document_type="Individual Provider Agreement",
         )
-        
+
         # 4. Generate short-lived presigned URLs for assets
         secure_link = await client.files.presign_url(document.document_url)
         print(f"Download the document at: {secure_link}")
+
 
 if __name__ == "__main__":
     asyncio.run(run())

@@ -68,7 +68,9 @@ class PayerEnrollmentResource:
         Returns:
             The created existing provider enrollment.
         """
-        resp = await self._client._post(_ADD_EXISTING_PROVIDER_PATH, json=data.model_dump(mode="json", exclude_none=False))
+        resp = await self._client._post(
+            _ADD_EXISTING_PROVIDER_PATH, json=data.model_dump(mode="json", exclude_none=False)
+        )
         return ExistingProviderEnrollment.model_validate(resp)
 
     async def add_existing_group_enrollment(self, data: ExistingGroupEnrollmentCreate) -> ExistingGroupEnrollment:
@@ -150,9 +152,7 @@ class PayerEnrollmentResource:
         data = await self._client._get(_ENROLLMENT_DETAIL_PATH.format(id=request_id))
         return EnrollmentRequestDetail.model_validate(data)
 
-    async def update_request_status(
-        self, request_id: str, data: EnrollmentRequestStatusUpdate
-    ) -> dict[str, Any]:
+    async def update_request_status(self, request_id: str, data: EnrollmentRequestStatusUpdate) -> dict[str, Any]:
         """Update the status of an enrollment request (e.g. cancel it).
 
         Args:

@@ -64,12 +64,14 @@ Loaded environment variables from: /path/to/your/project/.env
 import asyncio
 from assured import AssuredClient
 
+
 async def main():
     async with AssuredClient() as client:
         # List all providers
         providers = await client.providers.list_all()
         for p in providers:
             print(f"{p.full_name} — NPI: {p.npi}")
+
 
 asyncio.run(main())
 ```

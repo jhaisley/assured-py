@@ -82,9 +82,7 @@ async def test_list_providers(client, mock_api):
         )
     )
 
-    associations = await client.practice_locations.list_providers(
-        PracticeLocationProviderListParams(provider="prov-1")
-    )
+    associations = await client.practice_locations.list_providers(PracticeLocationProviderListParams(provider="prov-1"))
     assert len(associations) == 1
     assert associations[0].provider_name == "Dr. Smith"
     assert associations[0].is_primary_location is True

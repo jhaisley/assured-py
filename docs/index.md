@@ -30,6 +30,7 @@ The Assured Platform API has extensive undocumented behaviors, silent endpoint m
 import asyncio
 from assured import AssuredClient
 
+
 async def main():
     async with AssuredClient() as client:
         # List all providers as a DataFrame
@@ -45,6 +46,7 @@ async def main():
                 document_name="Provider Agreement",
                 document_type="Individual Provider Agreement",
             )
+
 
 asyncio.run(main())
 ```

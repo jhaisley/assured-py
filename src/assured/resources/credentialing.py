@@ -217,4 +217,6 @@ class CredentialingResource:
         Returns:
             The raw API response describing the sent letter.
         """
-        return await self._client._post(_SEND_APPROVAL_LETTER_PATH, json=data.model_dump(mode="json", exclude_none=False))
+        return await self._client._post(
+            _SEND_APPROVAL_LETTER_PATH, json=data.model_dump(mode="json", exclude_none=False)
+        )
